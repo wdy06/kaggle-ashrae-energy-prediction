@@ -6,6 +6,7 @@ from pathlib import Path
 from tqdm import tqdm
 import math
 from datetime import datetime
+from logging import getLogger, StreamHandler, FileHandler, DEBUG
 
 from lightgbm import LGBMRegressor
 from sklearn.model_selection import KFold, StratifiedKFold
@@ -14,6 +15,8 @@ from sklearn.metrics import mean_squared_error
 import dataset
 import utils
 import features
+import mylogger
+
 
 parser = argparse.ArgumentParser(description='kaggle ashrae energy prediction')
 parser.add_argument("--debug", help="run debug mode",
@@ -38,31 +41,25 @@ else:
     result_dir = Path(utils.RESULTS_BASE_DIR) / experiment_name
 
 os.mkdir(result_dir)
-print(f'created: {result_dir}')
 
-print('loading data ...')
+logger = mylogger.get_mylogger(filename=result_dir / 'log')
+
+logger.debug(f'created: {result_dir}')
+
+logger.debug('loading data ...')
+
 train = dataset.AshraeDataset(mode='train', debug=args.debug)
 test = dataset.AshraeDataset(mode='test')
 
-# train_df['timestamp'] = pd.to_datetime(train_df['timestamp'])
-# test_df['timestamp'] = pd.to_datetime(test_df['timestamp'])
-
-# weather_train['timestamp'] = pd.to_datetime(weather_train['timestamp'])
-# weather_test['timestamp'] = pd.to_datetime(weather_test['timestamp'])
-
-# X = pd.merge(train_df, building_meta, on='building_id', how='left')
-# X = pd.merge(X, weather_train, on=['site_id', 'timestamp'], how='left')
-# test_X = pd.merge(test_df, building_meta, on='building_id', how='left')
-# test_X = pd.merge(test_X, weather_test, on=['site_id', 'timestamp'], how='left')
 
 # extract feature
-print('extracting features ...')
-x = pd.concat([train.merged_df.copy(), 
-                     features.time_feature(train.merged_df)], 
-                     axis=1)
+logger.debug('extracting features ...')
+x = pd.concat([train.merged_df.copy(),
+               features.time_feature(train.merged_df)],
+              axis=1)
 test_x = pd.concat([test.merged_df.copy(),
                     features.time_feature(test.merged_df)],
-                    axis=1)
+                   axis=1)
 
 x = x.drop(['building_id', 'timestamp'], axis=1)
 test_x = test_x.drop(['building_id', 'timestamp'], axis=1)
@@ -71,23 +68,23 @@ x = pd.get_dummies(x)
 test_x = pd.get_dummies(test_x)
 
 x['meter_reading'] = np.log1p(x['meter_reading'])
-print(x.columns)
-print(x.shape)
+logger.debug(x.columns)
+logger.debug(x.shape)
 
 default_param = {
-            'nthread': -1,
-            'n_estimators': 10000,
-            'learning_rate': 0.02,
-            'num_leaves': 34,
-            'colsample_bytree': 0.9497036,
-            'subsample': 0.8715623,
-            'max_depth': 8,
-            'reg_alpha': 0.041545473,
-            'reg_lambda': 0.0735294,
-            'min_split_gain': 0.0222415,
-            'min_child_weight': 39.3259775,
-            'silent': -1,
-            'verbose': -1
+    'nthread': -1,
+    'n_estimators': 10000,
+    'learning_rate': 0.02,
+    'num_leaves': 34,
+    'colsample_bytree': 0.9497036,
+    'subsample': 0.8715623,
+    'max_depth': 8,
+    'reg_alpha': 0.041545473,
+    'reg_lambda': 0.0735294,
+    'min_split_gain': 0.0222415,
+    'min_child_weight': 39.3259775,
+    'silent': -1,
+    'verbose': -1
 }
 
 folds = KFold(n_splits=N_FOLDS, shuffle=True, random_state=1001)
@@ -100,30 +97,29 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(x)):
 
     model = LGBMRegressor(**default_param)
     model.fit(train_x, train_y, eval_set=[(train_x, train_y), (val_x, val_y)],
-            eval_metric= 'rmse', verbose= 100, early_stopping_rounds= 200)
-    y_preds[val_idx] = model.predict(val_x, num_iteration=model.best_iteration_)
+              eval_metric='rmse', verbose=100, early_stopping_rounds=200)
+    y_preds[val_idx] = model.predict(
+        val_x, num_iteration=model.best_iteration_)
     model_path = result_dir / f'lgbm_fold{n_fold}.pkl'
     utils.dump_pickle(model, model_path)
 
 val_score = np.sqrt(mean_squared_error(y_preds, x['meter_reading']))
-print(val_score)
+# print(val_score)
+logger.debug(val_score)
 
-print(test_x.columns)
-print(test_x.shape)
-print(set(train_x.columns) - set(test_x.columns))
-print(set(test_x.columns) - set(train_x.columns))
+logger.debug(test_x.columns)
+logger.debug(test_x.shape)
+logger.debug(set(train_x.columns) - set(test_x.columns))
+logger.debug(set(test_x.columns) - set(train_x.columns))
 test_preds = np.zeros(len(test_x))
 for i in tqdm(range(N_FOLDS)):
     model = utils.load_pickle(result_dir / f'lgbm_fold{i}.pkl')
     test_preds += model.predict(test_x.drop(['row_id'], axis=1),
-                               num_iteration=model.best_iteration_)
+                                num_iteration=model.best_iteration_)
 test_preds /= 5
 
 sample_submission = pd.read_csv(utils.DATA_DIR / 'sample_submission.csv')
 sample_submission['meter_reading'] = np.expm1(test_preds)
 submit_save_path = result_dir / 'submission.csv'
 sample_submission.to_csv(submit_save_path, index=False)
-print(f'save to {submit_save_path}')
-
-
-
+logger.debug(f'save to {submit_save_path}')
