@@ -108,7 +108,6 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(x)):
     utils.dump_pickle(model, model_path)
 
 val_score = np.sqrt(mean_squared_error(y_preds, x['meter_reading']))
-# print(val_score)
 logger.debug(val_score)
 
 logger.debug(test_x.columns)
@@ -124,6 +123,6 @@ test_preds /= 5
 
 sample_submission = pd.read_csv(utils.DATA_DIR / 'sample_submission.csv')
 sample_submission['meter_reading'] = np.expm1(test_preds)
-submit_save_path = result_dir / 'submission.csv'
+submit_save_path = result_dir / f'submission_{val_score:.5f}.csv'
 sample_submission.to_csv(submit_save_path, index=False)
 logger.debug(f'save to {submit_save_path}')
