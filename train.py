@@ -16,6 +16,7 @@ import dataset
 import utils
 import features
 import mylogger
+import mycallbacks
 
 
 parser = argparse.ArgumentParser(description='kaggle ashrae energy prediction')
@@ -95,9 +96,12 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(x)):
     train_x = train_x.drop('meter_reading', axis=1)
     val_x = val_x.drop('meter_reading', axis=1)
 
+    log_evaluater = mycallbacks.log_evaluation(logger=logger, period=100)
+    callbacks = [log_evaluater]
     model = LGBMRegressor(**default_param)
     model.fit(train_x, train_y, eval_set=[(train_x, train_y), (val_x, val_y)],
-              eval_metric='rmse', verbose=100, early_stopping_rounds=200)
+              eval_metric='rmse', verbose=100, early_stopping_rounds=200,
+              callbacks=callbacks)
     y_preds[val_idx] = model.predict(
         val_x, num_iteration=model.best_iteration_)
     model_path = result_dir / f'lgbm_fold{n_fold}.pkl'
