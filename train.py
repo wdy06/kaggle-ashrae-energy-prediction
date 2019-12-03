@@ -25,7 +25,7 @@ parser.add_argument("--debug", help="run debug mode",
                     action="store_true")
 args = parser.parse_args()
 
-N_FOLDS = 5
+N_FOLDS = 6
 
 # building_meta = pd.read_csv(utils.DATA_DIR / "building_metadata.csv")
 # train_df = pd.read_csv(utils.DATA_DIR / "train.csv")
@@ -65,9 +65,6 @@ try:
                         features.time_feature(test.merged_df)],
                        axis=1)
 
-    x = x.drop(['building_id', 'timestamp'], axis=1)
-    test_x = test_x.drop(['building_id', 'timestamp'], axis=1)
-
     x = pd.get_dummies(x)
     test_x = pd.get_dummies(test_x)
 
@@ -94,10 +91,19 @@ try:
         'gpu_device_id': 0
 
     }
+    if args.debug:
+        folds = KFold(n_splits=N_FOLDS, shuffle=True, random_state=1001)
+        cv_indices = list(folds.split(x))
+        # print(cv_indices)
+    else:
+        cv_indices = utils.get_cv_index(x)
+        # print(cv_indices)
 
-    folds = KFold(n_splits=N_FOLDS, shuffle=True, random_state=1001)
+    x = x.drop(['building_id', 'timestamp'], axis=1)
+    test_x = test_x.drop(['building_id', 'timestamp'], axis=1)
+
     y_preds = np.zeros(len(x))
-    for n_fold, (train_idx, val_idx) in enumerate(folds.split(x)):
+    for n_fold, (train_idx, val_idx) in enumerate(cv_indices):
         train_x, val_x = x.iloc[train_idx], x.iloc[val_idx]
         train_y, val_y = train_x['meter_reading'], val_x['meter_reading']
         train_x = train_x.drop('meter_reading', axis=1)
