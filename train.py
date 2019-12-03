@@ -128,7 +128,8 @@ try:
                                     num_iteration=model.best_iteration_)
     test_preds /= 5
 
-    sample_submission = pd.read_csv(utils.DATA_DIR / 'sample_submission.csv')
+    sample_submission = utils.load_pickle(
+        utils.DATA_DIR / 'sample_submission.pkl')
     sample_submission['meter_reading'] = np.expm1(test_preds)
     submit_save_path = result_dir / f'submission_{val_score:.5f}.csv'
     sample_submission.to_csv(submit_save_path, index=False)
