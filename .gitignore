@@ -2,6 +2,7 @@ data/
 results/
 .vscode/
 __pycache__/
+notebooks/.ipynb_checkpoints/
 *.pkl
 *.csv
 
