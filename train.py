@@ -123,16 +123,30 @@ try:
     val_score = np.sqrt(mean_squared_error(y_preds, x['meter_reading']))
     logger.debug(val_score)
 
+    # fit on full train data
+    logger.debug('fitting on full train data')
+    log_evaluater = mycallbacks.log_evaluation(logger=logger, period=100)
+    callbacks = [log_evaluater]
+    model = LGBMRegressor(**default_param)
+    model.fit(x.drop(['meter_reading'], axis=1), x['meter_reading'],
+              eval_metric='rmse', verbose=100, callbacks=callbacks)
+    model_path = result_dir / f'lgbm_all.pkl'
+    utils.dump_pickle(model, model_path)
+
+    # predict test data
     logger.debug(test_x.columns)
     logger.debug(test_x.shape)
     logger.debug(set(train_x.columns) - set(test_x.columns))
     logger.debug(set(test_x.columns) - set(train_x.columns))
     test_preds = np.zeros(len(test_x))
-    for i in tqdm(range(N_FOLDS)):
-        model = utils.load_pickle(result_dir / f'lgbm_fold{i}.pkl')
-        test_preds += model.predict(test_x.drop(['row_id'], axis=1),
-                                    num_iteration=model.best_iteration_)
-    test_preds /= 5
+    model = utils.load_pickle(result_dir / 'lgbm_all.pkl')
+    test_preds = model.predict(test_x.drop(['row_id'], axis=1),
+                               num_iteration=model.best_iteration_)
+    # for i in tqdm(range(N_FOLDS)):
+    #     model = utils.load_pickle(result_dir / f'lgbm_fold{i}.pkl')
+    #     test_preds += model.predict(test_x.drop(['row_id'], axis=1),
+    #                                 num_iteration=model.best_iteration_)
+    # test_preds /= 5
 
     sample_submission = utils.load_pickle(
         utils.DATA_DIR / 'sample_submission.pkl')
