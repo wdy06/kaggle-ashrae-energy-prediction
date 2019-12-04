@@ -99,8 +99,8 @@ try:
         cv_indices = utils.get_cv_index(x)
         # print(cv_indices)
 
-    x = x.drop(['building_id', 'timestamp'], axis=1)
-    test_x = test_x.drop(['building_id', 'timestamp'], axis=1)
+    x = x.drop(['timestamp'], axis=1)
+    test_x = test_x.drop(['timestamp'], axis=1)
 
     y_preds = np.zeros(len(x))
     for n_fold, (train_idx, val_idx) in enumerate(cv_indices):
