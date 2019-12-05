@@ -43,8 +43,7 @@ try:
         N_FOLDS = 2
     else:
         result_dir = Path(utils.RESULTS_BASE_DIR) / experiment_name
-
-    slack.notify_start(experiment_name)
+        slack.notify_start(experiment_name)
     os.mkdir(result_dir)
 
     logger = mylogger.get_mylogger(filename=result_dir / 'log')
@@ -120,6 +119,7 @@ try:
         model_path = result_dir / f'lgbm_fold{n_fold}.pkl'
         utils.dump_pickle(model, model_path)
 
+    y_preds = np.where(y_preds<0, 0, y_preds)
     val_score = np.sqrt(mean_squared_error(y_preds, x['meter_reading']))
     logger.debug(val_score)
 
@@ -151,11 +151,14 @@ try:
     sample_submission = utils.load_pickle(
         utils.DATA_DIR / 'sample_submission.pkl')
     sample_submission['meter_reading'] = np.expm1(test_preds)
+    sample_submission[sample_submission['meter_reading'] < 0] = 0
     submit_save_path = result_dir / f'submission_{val_score:.5f}.csv'
     sample_submission.to_csv(submit_save_path, index=False)
     logger.debug(f'save to {submit_save_path}')
-    slack.notify_finish(experiment_name, val_score)
+    if not args.debug:
+        slack.notify_finish(experiment_name, val_score)
 
 except Exception as e:
     logger.exception(e)
-    slack.notify_fail(experiment_name, e.__class__.__name__, str(e))
+    if not args.debug:
+        slack.notify_fail(experiment_name, e.__class__.__name__, str(e))
