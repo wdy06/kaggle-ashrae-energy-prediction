@@ -1,7 +1,11 @@
 from pathlib import Path
 import pandas as pd
+import numpy as np
 import pickle
 import os
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set()
 
 
 BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
@@ -66,3 +70,15 @@ def get_cv_index(df):
                        df.query(val_query).index.tolist()))
 
     return cv_indices
+
+
+def save_feature_importance(model, columns, path):
+    df = pd.DataFrame()
+    df['importance'] = np.log(model.feature_importances_)
+    df.index = columns
+    df.sort_values(by='importance', ascending=True, inplace=True)
+    fig = plt.figure(figsize=(20, 15))
+    ax = fig.add_subplot(1, 1, 1)
+    ax.barh(y=df.index, width=df.importance)
+    plt.savefig(path)
+

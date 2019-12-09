@@ -172,6 +172,8 @@ try:
               eval_metric='rmse', verbose=100, callbacks=callbacks)
     model_path = result_dir / f'lgbm_all.pkl'
     utils.dump_pickle(model, model_path)
+    utils.save_feature_importance(model, x.drop(['meter_reading'], axis=1).columns,
+                                  result_dir / 'feature_importance.png')
 
     # predict test data
     # print(set(x.columns) - set(test_x.columns))
