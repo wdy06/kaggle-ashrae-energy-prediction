@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import math
 
+
 def time_feature(df):
     result_df = pd.DataFrame()
     result_df['month'] = df['timestamp'].dt.month.astype(np.int)
@@ -11,5 +12,6 @@ def time_feature(df):
     result_df['dayofweek'] = df['timestamp'].dt.dayofweek.astype(np.int8)
     result_df['day_month'] = df['timestamp'].dt.day.astype(np.int8)
     result_df['week_month'] = df['timestamp'].dt.day / 7
-    result_df['week_month'] = result_df['week_month'].apply(lambda x: math.ceil(x)).astype(np.int8)
+    result_df['week_month'] = result_df['week_month'].apply(
+        lambda x: math.ceil(x)).astype(np.int8)
     return result_df

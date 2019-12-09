@@ -7,6 +7,25 @@ import os
 BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = BASE_DIR / 'data'
 RESULTS_BASE_DIR = BASE_DIR / 'results'
+SITE_GMT_OFFSET = [-5, 0, -7, -5, -8, 0, -5, -5, -5, -6, -7, -5, 0, -6, -5, -5]
+PRIMARY_USE = [
+    'Education',
+    'Office',
+    'Public services',
+    'Entertainment/public assembly',
+    'Healthcare',
+    'Lodging/residential',
+    'Food sales and service',
+    'Retail',
+    'Parking',
+    'Other',
+    'Utility',
+    'Warehouse/storage',
+    'Religious worship',
+    'Technology/science',
+    'Manufacturing/industrial',
+    'Services'
+]
 
 
 def dump_pickle(obj, path):
