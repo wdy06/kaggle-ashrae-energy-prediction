@@ -78,11 +78,10 @@ try:
     test_x['primary_use'] = le.transform(test_x['primary_use'])
 
     x['meter_reading'] = np.log1p(x['meter_reading'])
-    logger.debug(x.columns)
-    logger.debug(x.shape)
 
     categorical_features = [
-        'building_id',
+        'building_id_0',
+        'building_id_1',
         'site_id',
         'meter',
         'primary_use',
@@ -109,14 +108,21 @@ try:
         'min_child_weight': 39.3259775,
         'silent': -1,
         'verbose': -1,
-        # 'device': 'gpu',
-        # 'gpu_platform_id': 0,
-        # 'gpu_device_id': 0
+        'device': 'gpu',
+        'gpu_platform_id': 0,
+        'gpu_device_id': 0
 
     }
 
     # reindex for cv
     x.index = range(len(x))
+
+    # because of high cardinality
+    x = preprocessing.split_building_id(x)
+    test_x = preprocessing.split_building_id(test_x)
+
+    logger.debug(x.columns)
+    logger.debug(x.shape)
 
     if args.debug:
         folds = KFold(n_splits=N_FOLDS, shuffle=True, random_state=1001)

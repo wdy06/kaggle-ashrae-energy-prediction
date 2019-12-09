@@ -23,6 +23,12 @@ def compress_dataframe(df):
             result[col] = pd.to_numeric(col_data, downcast='float')
     return result
 
+def split_building_id(df):
+    df['building_id'] = df['building_id'].map(lambda x: str(x).zfill(4))
+    df['building_id_0'] = df['building_id'].map(lambda x: int(x[:2]))
+    df['building_id_1'] = df['building_id'].map(lambda x: int(x[2:]))
+    df.drop(['building_id'], axis=1, inplace=True)
+    return df
 
 def fix_timestamp_to_hour_standard(df):
     df.timestamp = (df.timestamp - pd.to_datetime("2016-01-01")
