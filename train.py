@@ -110,7 +110,8 @@ try:
         'verbose': -1,
         'device': 'gpu',
         'gpu_platform_id': 0,
-        'gpu_device_id': 0
+        'gpu_device_id': 0,
+        'random_state': 2019,
 
     }
 
