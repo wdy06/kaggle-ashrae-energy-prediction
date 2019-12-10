@@ -97,7 +97,7 @@ try:
     default_param = {
         'nthread': -1,
         'n_estimators': 10000,
-        'learning_rate': 0.02,
+        'learning_rate': 0.1,
         'num_leaves': 34,
         'colsample_bytree': 0.9497036,
         'subsample': 0.8715623,
@@ -151,7 +151,7 @@ try:
         callbacks = [log_evaluater]
         model = LGBMRegressor(**default_param)
         model.fit(train_x, train_y, eval_set=[(train_x, train_y), (val_x, val_y)],
-                  eval_metric='rmse', verbose=100, early_stopping_rounds=200,
+                  eval_metric='rmse', verbose=100, early_stopping_rounds=100,
                   categorical_feature=categorical_features,
                   callbacks=callbacks)
         y_preds[val_idx] = model.predict(
