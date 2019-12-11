@@ -29,11 +29,6 @@ args = parser.parse_args()
 
 N_FOLDS = 6
 
-# building_meta = pd.read_csv(utils.DATA_DIR / "building_metadata.csv")
-# train_df = pd.read_csv(utils.DATA_DIR / "train.csv")
-# test_df = pd.read_csv(utils.DATA_DIR / "test.csv")
-# weather_train = pd.read_csv(utils.DATA_DIR / "weather_train.csv")
-# weather_test = pd.read_csv(utils.DATA_DIR / "weather_test.csv")
 
 try:
 
@@ -59,12 +54,9 @@ try:
 
     # preprocessing
     bad_rows = preprocessing.find_bad_rows(train.merged_df)
-    # print(bad_rows)
     train.merged_df = train.merged_df.drop(index=bad_rows)
     # extract feature
     logger.debug('extracting features ...')
-    # x = train.merged_df.copy()
-    # test_x = test.merged_df.copy()
     x = pd.concat([train.merged_df.copy(),
                    features.time_feature(train.merged_df)],
                   axis=1)
@@ -130,14 +122,10 @@ try:
     if args.debug:
         folds = KFold(n_splits=N_FOLDS, shuffle=True, random_state=1001)
         cv_indices = list(folds.split(x))
-        # print(cv_indices)
     else:
         cv_indices = utils.get_cv_index(x)
-        # print(cv_indices)
 
     x = x.drop(['timestamp'], axis=1)
-    # print(x.dtypes)
-    # print(x['had_air_temperature'])
     test_x = test_x.drop(['timestamp'], axis=1)
 
     # logger.debug(len(x))
