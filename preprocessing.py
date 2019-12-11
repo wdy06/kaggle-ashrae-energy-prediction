@@ -23,12 +23,14 @@ def compress_dataframe(df):
             result[col] = pd.to_numeric(col_data, downcast='float')
     return result
 
+
 def split_building_id(df):
     df['building_id'] = df['building_id'].map(lambda x: str(x).zfill(4))
     df['building_id_0'] = df['building_id'].map(lambda x: int(x[:2]))
     df['building_id_1'] = df['building_id'].map(lambda x: int(x[2:]))
     df.drop(['building_id'], axis=1, inplace=True)
     return df
+
 
 def fix_timestamp_to_hour_standard(df):
     df.timestamp = (df.timestamp - pd.to_datetime("2016-01-01")
@@ -141,3 +143,9 @@ def find_bad_rows(X):
         find_bad_sitezero(X)).union(find_bad_building1099(X))
     X.drop(["tmp_timestamp"], axis=1, inplace=True)
     return bad_row_index
+
+
+def log_square_feet(df):
+    df['square_feet'] = np.log(df['square_feet'])
+    df.rename(columns={'square_feet': 'log_square_feet'}, inplace=True)
+    return df

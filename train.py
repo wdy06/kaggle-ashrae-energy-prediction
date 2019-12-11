@@ -72,6 +72,8 @@ try:
                         features.time_feature(test.merged_df)],
                        axis=1)
 
+    x = preprocessing.log_square_feet(x)
+    test_x = preprocessing.log_square_feet(test_x)
     le = LabelEncoder()
     le.fit(utils.PRIMARY_USE)
     x['primary_use'] = le.transform(x['primary_use'])
