@@ -152,11 +152,14 @@ try:
     x = x.drop(['timestamp'], axis=1)
     test_x = test_x.drop(['timestamp'], axis=1)
 
+    # dump features
+    x = utils.compress_dataframe(x)
+    test_x = utils.compress_dataframe(test_x)
+    utils.dump_pickle(x, result_dir / 'x.pkl')
+    utils.dump_pickle(test_x, result_dir / 'test_x.pkl')
     # logger.debug(len(x))
     y_preds = np.zeros(len(x))
     for n_fold, (train_idx, val_idx) in enumerate(cv_indices):
-        print(min(train_idx), max(train_idx))
-        print(min(val_idx), max(val_idx))
         train_x, val_x = x.iloc[train_idx], x.iloc[val_idx]
         train_y, val_y = train_x['meter_reading'], val_x['meter_reading']
         train_x = train_x.drop('meter_reading', axis=1)

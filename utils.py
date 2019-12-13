@@ -34,7 +34,7 @@ PRIMARY_USE = [
 
 def dump_pickle(obj, path):
     with open(path, 'wb') as f:
-        pickle.dump(obj, f)
+        pickle.dump(obj, f, protocol=4)
 
 
 def load_pickle(path):
@@ -82,3 +82,42 @@ def save_feature_importance(model, columns, path):
     ax.barh(y=df.index, width=df.importance)
     plt.savefig(path)
 
+
+def compress_dataframe(df):
+    result = df.copy()
+    for col in result.columns:
+        col_data = result[col]
+        dn = col_data.dtype.name
+        if dn == "object":
+            result[col] = pd.to_numeric(col_data.astype(
+                "category").cat.codes, downcast="integer")
+        elif dn == "bool":
+            result[col] = col_data.astype("int8")
+        elif dn.startswith("int") or (col_data.round() == col_data).all():
+            result[col] = pd.to_numeric(col_data, downcast="integer")
+        else:
+            result[col] = pd.to_numeric(col_data, downcast='float')
+    return result
+
+
+def cache_feature(feature_name):
+    def _wrapper(func):
+        #cache_name = os.path.join(FEATURES_DIR, feature_name+'.pkl')
+        def _extract_feature(df, mode):
+            if mode not in ['train', 'test']:
+                raise ValueError('mode must be train or test.')
+            cache_name = os.path.join(
+                FEATURES_DIR, f'{mode}_{feature_name}.pkl')
+            if os.path.exists(cache_name):
+                print(f'{cache_name} found. loading feature cache')
+                with open(cache_name, 'rb') as f:
+                    feature = pickle.load(f)
+                return feature
+            print('extracting feature ...')
+            feature = func(df)
+            print(f'save feature as cache {cache_name}')
+            with open(cache_name, 'wb') as f:
+                pickle.dump(feature, f)
+            return feature
+        return _extract_feature
+    return _wrapper
