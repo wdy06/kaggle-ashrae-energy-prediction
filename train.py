@@ -136,6 +136,9 @@ try:
     # reindex for cv
     x.index = range(len(x))
 
+    # add leak score column
+    test_x = utils.leak_validation(test_x)
+
     # because of high cardinality
     x = preprocessing.split_building_id(x)
     test_x = preprocessing.split_building_id(test_x)
@@ -179,7 +182,7 @@ try:
 
     y_preds = np.where(y_preds < 0, 0, y_preds)
     val_score = np.sqrt(mean_squared_error(y_preds, x['meter_reading']))
-    logger.debug(val_score)
+    logger.debug(f'val score: {val_score}')
 
     # fit on full train data
     logger.debug('fitting on full train data')
@@ -200,19 +203,19 @@ try:
     logger.debug(test_x.shape)
     logger.debug(set(x.columns) - set(test_x.columns))
     logger.debug(set(test_x.columns) - set(x.columns))
-    test_preds = np.zeros(len(test_x))
     model = utils.load_pickle(result_dir / 'lgbm_all.pkl')
-    test_preds = model.predict(test_x.drop(['row_id'], axis=1),
-                               num_iteration=model.best_iteration_)
-    # for i in tqdm(range(N_FOLDS)):
-    #     model = utils.load_pickle(result_dir / f'lgbm_fold{i}.pkl')
-    #     test_preds += model.predict(test_x.drop(['row_id'], axis=1),
-    #                                 num_iteration=model.best_iteration_)
-    # test_preds /= 5
+    test_x['test_preds'] = model.predict(test_x.drop(['row_id', 'leak_score'], axis=1),
+                                         num_iteration=model.best_iteration_)
 
+    # calculate leak validation score
+    leak_val_df = test_x[~test_x.leak_score.isnull()][[
+        'leak_score', 'test_preds']]
+    leak_val_score = np.sqrt(mean_squared_error(
+        leak_val_df.leak_score, leak_val_df.test_preds))
+    logger.debug(f'leak val score: {leak_val_score}')
     sample_submission = utils.load_pickle(
         utils.DATA_DIR / 'sample_submission.pkl')
-    sample_submission['meter_reading'] = np.expm1(test_preds)
+    sample_submission['meter_reading'] = np.expm1(test_x['test_preds'])
     sample_submission.loc[sample_submission['meter_reading']
                           < 0, 'meter_reading'] = 0
     submit_save_path = result_dir / f'submission_{val_score:.5f}.csv'
@@ -220,6 +223,7 @@ try:
     logger.debug(f'save to {submit_save_path}')
     if not args.debug:
         slack.notify_finish(experiment_name, val_score)
+        slack.notify_finish(experiment_name, leak_val_score)
 
 except Exception as e:
     logger.exception(e)

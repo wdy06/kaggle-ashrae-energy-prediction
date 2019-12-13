@@ -10,6 +10,7 @@ sns.set()
 
 BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = BASE_DIR / 'data'
+LEAK_DATA_DIR = DATA_DIR / 'leak_data' / 'clean_data'
 RESULTS_BASE_DIR = BASE_DIR / 'results'
 SITE_GMT_OFFSET = [-5, 0, -7, -5, -8, 0, -5, -5, -5, -6, -7, -5, 0, -6, -5, -5]
 PRIMARY_USE = [
@@ -121,3 +122,20 @@ def cache_feature(feature_name):
             return feature
         return _extract_feature
     return _wrapper
+
+
+def leak_validation(test_x):
+    df = test_x.copy()
+    leak0_df = pd.read_csv(LEAK_DATA_DIR / 'leak0_clean.csv')
+    leak1_df = pd.read_csv(LEAK_DATA_DIR / 'leak1_clean.csv')
+    leak2_df = pd.read_csv(LEAK_DATA_DIR / 'leak2_clean.csv')
+    leak4_df = pd.read_csv(LEAK_DATA_DIR / 'leak4_clean.csv')
+    leak15_df = pd.read_csv(LEAK_DATA_DIR / 'leak15_clean.csv')
+    all_leak = pd.concat([leak0_df, leak1_df, leak2_df, leak4_df, leak15_df])
+    all_leak.timestamp = pd.to_datetime(all_leak.timestamp)
+    all_leak.drop(['score'], axis=1, inplace=True)
+    all_leak.rename(columns={'meter_reading': 'leak_score'}, inplace=True)
+    all_leak.leak_score = np.log1p(all_leak.leak_score)
+    df = pd.merge(df, all_leak, on=[
+                  'building_id', 'timestamp', 'meter'], how='left')
+    return df
