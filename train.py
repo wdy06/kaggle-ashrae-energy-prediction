@@ -57,12 +57,35 @@ try:
     train.merged_df = train.merged_df.drop(index=bad_rows)
     # extract feature
     logger.debug('extracting features ...')
+    # time feature
     x = pd.concat([train.merged_df.copy(),
                    features.time_feature(train.merged_df)],
                   axis=1)
     test_x = pd.concat([test.merged_df.copy(),
                         features.time_feature(test.merged_df)],
                        axis=1)
+    # holiday feature
+    x = pd.concat([x, features.holiday_feature(x)],
+                  axis=1)
+    test_x = pd.concat([test_x, features.holiday_feature(test_x)],
+                       axis=1)
+
+    # lag shfit feature
+    x = pd.merge(x, features.lag_shift_feature(x), on=[
+                 'building_id', 'meter', 'timestamp'], how='left')
+    test_x = pd.merge(test_x, features.lag_shift_feature(test_x), on=[
+                      'building_id', 'meter', 'timestamp'], how='left')
+
+    # aggregation feature
+    x = x.join(features.aggregate_weather_feature(x),
+               on=['site_id', 'meter', 'month'])
+    test_x = test_x.join(features.aggregate_weather_feature(x),
+                         on=['site_id', 'meter', 'month'])
+    # meter aggregation
+    meter_aggregated = features.aggregate_meter_reading(x)
+    x = x.join(meter_aggregated, on=['building_id', 'meter', 'month'])
+    test_x = test_x.join(meter_aggregated, on=[
+                         'building_id', 'meter', 'month'])
 
     x = preprocessing.log_square_feet(x)
     test_x = preprocessing.log_square_feet(test_x)
@@ -79,6 +102,7 @@ try:
         'site_id',
         'meter',
         'primary_use',
+        'holiday',
         'had_air_temperature',
         'had_cloud_coverage',
         'had_dew_temperature',
