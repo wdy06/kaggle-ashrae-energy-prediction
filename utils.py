@@ -10,6 +10,7 @@ sns.set()
 
 BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = BASE_DIR / 'data'
+FEATURE_DIR = BASE_DIR / 'features'
 LEAK_DATA_DIR = DATA_DIR / 'leak_data' / 'clean_data'
 RESULTS_BASE_DIR = BASE_DIR / 'results'
 SITE_GMT_OFFSET = [-5, 0, -7, -5, -8, 0, -5, -5, -5, -6, -7, -5, 0, -6, -5, -5]

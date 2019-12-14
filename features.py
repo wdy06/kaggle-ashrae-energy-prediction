@@ -5,6 +5,10 @@ import math
 
 def time_feature(df):
     result_df = pd.DataFrame()
+    result_df['building_id'] = df['building_id']
+    result_df['timestamp'] = df['timestamp']
+    result_df['meter'] = df['meter']
+
     result_df['month'] = df['timestamp'].dt.month.astype(np.int)
     result_df['weekofyear'] = df['timestamp'].dt.weekofyear.astype(np.int8)
     result_df['dayofyear'] = df['timestamp'].dt.dayofyear.astype(np.int16)
@@ -20,8 +24,9 @@ def time_feature(df):
 def holiday_feature(df):
     org_df = df.copy()
     result_df = pd.DataFrame()
-    # result_df['building_id'] = org_df['building_id']
-    # result_df['timestamp'] = org_df['timestamp']
+    result_df['building_id'] = org_df['building_id']
+    result_df['timestamp'] = org_df['timestamp']
+    result_df['meter'] = org_df['meter']
     result_df['holiday'] = org_df['timestamp'].dt.dayofweek.map(
         lambda x: True if x in [5, 6] else False)
     return result_df
@@ -105,7 +110,7 @@ def aggregate_weather_feature(df):
             'wind_speed_std': 'std'
         },
     }
-
+    org_df['month'] = org_df['timestamp'].dt.month.astype(np.int)
     aggregated = org_df.groupby(
         ['site_id', 'meter', 'month']).agg(aggregations)
     aggregated.columns = aggregated.columns.get_level_values(1)
@@ -123,6 +128,7 @@ def aggregate_meter_reading(df):
             'meter_reading_std': 'std',
         }
     }
+    org_df['month'] = org_df['timestamp'].dt.month.astype(np.int)
     aggregated = org_df.groupby(
         ['building_id', 'meter', 'month']).agg(aggregations)
     aggregated.columns = aggregated.columns.get_level_values(1)
