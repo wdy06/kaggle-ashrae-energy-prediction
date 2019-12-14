@@ -58,34 +58,47 @@ try:
     # extract feature
     logger.debug('extracting features ...')
     # time feature
-    x = pd.concat([train.merged_df.copy(),
-                   features.time_feature(train.merged_df)],
-                  axis=1)
-    test_x = pd.concat([test.merged_df.copy(),
-                        features.time_feature(test.merged_df)],
-                       axis=1)
+    x = pd.merge(train.merged_df.copy(),
+                 utils.load_pickle(utils.FEATURE_DIR /
+                                   'train_time_feature.pkl'),
+                 on=['building_id', 'meter', 'timestamp'],
+                 how='left')
+    test_x = pd.merge(test.merged_df.copy(),
+                      utils.load_pickle(utils.FEATURE_DIR /
+                                        'test_time_feature.pkl'),
+                      on=['building_id', 'meter', 'timestamp'],
+                      how='left')
     # holiday feature
-    x = pd.concat([x, features.holiday_feature(x)],
-                  axis=1)
-    test_x = pd.concat([test_x, features.holiday_feature(test_x)],
-                       axis=1)
+    x = pd.merge(x,
+                 utils.load_pickle(utils.FEATURE_DIR /
+                                   'train_holiday_feature.pkl'),
+                 on=['building_id', 'meter', 'timestamp'],
+                 how='left')
+    test_x = pd.merge(test_x,
+                      utils.load_pickle(utils.FEATURE_DIR /
+                                        'test_holiday_feature.pkl'),
+                      on=['building_id', 'meter', 'timestamp'],
+                      how='left')
 
     # lag shfit feature
-    x = pd.merge(x, features.lag_shift_feature(x), on=[
-                 'building_id', 'meter', 'timestamp'], how='left')
-    test_x = pd.merge(test_x, features.lag_shift_feature(test_x), on=[
-                      'building_id', 'meter', 'timestamp'], how='left')
+    x = pd.merge(x, utils.load_pickle(utils.FEATURE_DIR / 'train_lag_shift_feature.pkl'),
+                 on=['building_id', 'meter', 'timestamp'],
+                 how='left')
+    test_x = pd.merge(test_x, utils.load_pickle(utils.FEATURE_DIR / 'test_lag_shift_feature.pkl'),
+                      on=['building_id', 'meter', 'timestamp'],
+                      how='left')
 
     # aggregation feature
-    x = x.join(features.aggregate_weather_feature(x),
-               on=['site_id', 'meter', 'month'])
-    test_x = test_x.join(features.aggregate_weather_feature(x),
-                         on=['site_id', 'meter', 'month'])
+    # x = x.join(utils.load_pickle(utils.FEATURE_DIR / 'train_aggregate_weather_feature.pkl'),
+    #            on=['site_id', 'meter', 'month'])
+    # test_x = test_x.join(utils.load_pickle(utils.FEATURE_DIR / 'test_aggregate_weather_feature.pkl'),
+    #                      on=['site_id', 'meter', 'month'])
     # meter aggregation
-    meter_aggregated = features.aggregate_meter_reading(x)
-    x = x.join(meter_aggregated, on=['building_id', 'meter', 'month'])
-    test_x = test_x.join(meter_aggregated, on=[
-                         'building_id', 'meter', 'month'])
+    # meter_aggregated = utils.load_pickle(
+    #     utils.FEATURE_DIR / 'train_aggregate_meter_reading_feature.pkl')
+    # x = x.join(meter_aggregated, on=['building_id', 'meter', 'month'])
+    # test_x = test_x.join(meter_aggregated, on=[
+    #                      'building_id', 'meter', 'month'])
 
     x = preprocessing.log_square_feet(x)
     test_x = preprocessing.log_square_feet(test_x)
