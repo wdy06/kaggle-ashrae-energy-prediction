@@ -161,62 +161,60 @@ try:
     logger.debug(x.columns)
     logger.debug(x.shape)
 
-    if args.debug:
-        folds = KFold(n_splits=N_FOLDS, shuffle=True, random_state=1001)
-        cv_indices = list(folds.split(x))
-    else:
-        cv_indices = utils.get_cv_index(x)
-
-    x = x.drop(['timestamp'], axis=1)
-    test_x = test_x.drop(['timestamp'], axis=1)
-
     # dump features
-    x = utils.compress_dataframe(x)
-    test_x = utils.compress_dataframe(test_x)
+    # x = utils.compress_dataframe(x)
+    # test_x = utils.compress_dataframe(test_x)
     utils.dump_pickle(x, result_dir / 'x.pkl')
     utils.dump_pickle(test_x, result_dir / 'test_x.pkl')
 
-    y_preds = np.zeros(len(x))
-    for n_fold, (train_idx, val_idx) in enumerate(cv_indices):
-        train_x, val_x = x.iloc[train_idx], x.iloc[val_idx]
-        train_y, val_y = train_x['meter_reading'], val_x['meter_reading']
-        train_x = train_x.drop('meter_reading', axis=1)
-        val_x = val_x.drop('meter_reading', axis=1)
+    val_score_list = []
+    for meter_type in METER_TYPE_LIST:
+        x_meter = x[x.meter == meter_type]
+        y_preds = np.zeros(len(x_meter))
+        # reset index for cv
+        x_meter.index = range(len(x_meter))
+        if args.debug:
+            folds = KFold(n_splits=N_FOLDS, shuffle=True, random_state=1001)
+            cv_indices = list(folds.split(x_meter))
+        else:
+            cv_indices = utils.get_cv_index(x_meter)
 
-        for meter_type in METER_TYPE_LIST:
-            train_x_meter = train_x[train_x.meter == meter_type]
-            train_y_meter = train_y[train_x.meter == meter_type]
-            val_x_meter = val_x[val_x.meter == meter_type]
-            val_y_meter = val_y[val_x.meter == meter_type]
-            val_meter_index = val_x_meter.index
-            train_x_meter.drop(['meter'], axis=1, inplace=True)
-            val_x_meter.drop(['meter'], axis=1, inplace=True)
+        x_meter = x_meter.drop(['timestamp'], axis=1)
+
+        for n_fold, (train_idx, val_idx) in enumerate(cv_indices):
+            train_x, val_x = x_meter.iloc[train_idx], x_meter.iloc[val_idx]
+            train_y, val_y = train_x['meter_reading'], val_x['meter_reading']
+            train_x = train_x.drop('meter_reading', axis=1)
+            val_x = val_x.drop('meter_reading', axis=1)
+
+            train_x.drop(['meter'], axis=1, inplace=True)
+            val_x.drop(['meter'], axis=1, inplace=True)
 
             log_evaluater = mycallbacks.log_evaluation(
                 logger=logger, period=100)
             callbacks = [log_evaluater]
             model = LGBMRegressor(**default_param)
-            model.fit(train_x_meter, train_y_meter, eval_set=[(train_x_meter, train_y_meter), (val_x_meter, val_y_meter)],
+            model.fit(train_x, train_y, eval_set=[(train_x, train_y), (val_x, val_y)],
                       eval_metric='rmse', verbose=100, early_stopping_rounds=100,
                       categorical_feature=categorical_features,
                       callbacks=callbacks)
-            y_preds[val_meter_index] = model.predict(
-                val_x_meter, num_iteration=model.best_iteration_)
+            y_preds[val_idx] = model.predict(
+                val_x, num_iteration=model.best_iteration_)
             model_path = result_dir / \
                 f'lgbm_meter{meter_type}_fold{n_fold}.pkl'
             utils.dump_pickle(model, model_path)
 
-    y_preds = np.where(y_preds < 0, 0, y_preds)
-    val_score = np.sqrt(mean_squared_error(y_preds, x['meter_reading']))
-    logger.debug(f'val score: {val_score}')
+        y_preds = np.where(y_preds < 0, 0, y_preds)
+        val_score = np.sqrt(mean_squared_error(
+            y_preds, x_meter['meter_reading']))
+        logger.debug(f'meter{meter_type} val score: {val_score}')
+        val_score_list.append(val_score)
 
-    # fit on full train data
-    logger.debug('fitting on full train data')
-    log_evaluater = mycallbacks.log_evaluation(logger=logger, period=100)
-    callbacks = [log_evaluater]
-    model = LGBMRegressor(**default_param)
-    for meter_type in METER_TYPE_LIST:
-        x_meter = x[x.meter == meter_type]
+        # fit on full train data
+        logger.debug('fitting on full train data')
+        log_evaluater = mycallbacks.log_evaluation(logger=logger, period=100)
+        callbacks = [log_evaluater]
+        model = LGBMRegressor(**default_param)
         model.fit(x_meter.drop(['meter_reading', 'meter'], axis=1), x_meter['meter_reading'],
                   eval_metric='rmse', verbose=100, callbacks=callbacks)
         model_path = result_dir / f'lgbm_meter{meter_type}_all.pkl'
@@ -224,6 +222,8 @@ try:
         utils.save_feature_importance(model, x_meter.drop(['meter_reading', 'meter'], axis=1).columns,
                                       result_dir / f'feature_importance_meter{meter_type}.png')
 
+    logger.debug(f'average val score: {np.mean(val_score_list)}')
+    test_x = test_x.drop(['timestamp'], axis=1)
     logger.debug(test_x.columns)
     logger.debug(test_x.shape)
     logger.debug(set(x.columns) - set(test_x.columns))
@@ -253,7 +253,7 @@ try:
     sample_submission.to_csv(submit_save_path, index=False)
     logger.debug(f'save to {submit_save_path}')
     if not args.debug:
-        slack.notify_finish(experiment_name, val_score)
+        slack.notify_finish(experiment_name, np.mean(val_score_list))
         slack.notify_finish(experiment_name, leak_val_score)
 
 except Exception as e:
